@@ -365,7 +365,7 @@ for (int i=1;i<size+1;i++){
             }
         }
         //---------------------------- wieder aktivieren
-        IJ.log("Major Protrusions: "+slopecountlarge+" Filopodia: "+slopecount);
+        IJ.log("Major Protrusions: "+slopecountlarge/2+" Filopodia: "+slopecount/2);
         //---------------------------- wieder aktivieren
         for (int clear = 0; clear < lang; clear++){slope[clear] = 0;revslopeA[clear] = 0;}
 
