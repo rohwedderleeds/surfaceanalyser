@@ -1,4 +1,7 @@
 # surfaceanalyser
+
+John E. Ladbury Group, FBS Leeds
+
 ImageJ plugin for analysing object surfaces
 Surface and Direction Detector
 Copy the files into the analysis folder within the plugin the pluginsfolder of ImageJ and restart imageJ activate the plugin.
