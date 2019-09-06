@@ -68,6 +68,7 @@ public class Surface_and_Direction_Detector_B implements PlugIn {
         sensitivity = gd.getNextNumber();
 
 //output images setup
+
         int w = ip.getWidth();
         int h = ip.getHeight();
         ImageStack outstack = stack.duplicate();
@@ -77,275 +78,248 @@ public class Surface_and_Direction_Detector_B implements PlugIn {
         ImageProcessor stackip = (ImageProcessor)imp1.getProcessor();
         ResultsTable rt1 = new ResultsTable();
         ResultsTable rt2 = new ResultsTable();
-first.show();
+        first.show();
 
-for (int i=1;i<size+1;i++){
-        //copy image and prepare threshold image
-        stackip = stack2.getProcessor(i);
+        for (int i=1;i<size+1;i++){
 
-        stackip.invert();
+//prepare image
 
-        //-----------------
-        imp2.setSlice(i);
+            stackip = stack2.getProcessor(i);
+            stackip.invert();
+            imp2.setSlice(i);
+            IJ.setAutoThreshold(imp2, "Huang");
+            RankFilters desp = new RankFilters();
+            desp.rank(stackip, 1.0, desp.MEDIAN,desp.BRIGHT_OUTLIERS,0);
 
-        //-----------------
-        IJ.setAutoThreshold(imp2, "Huang");
+//get outline
 
-        RankFilters desp = new RankFilters();
-
-        desp.rank(stackip, 1.0, desp.MEDIAN,desp.BRIGHT_OUTLIERS,0);
-
-        //get outline
-        RoiManager manager = RoiManager.getInstance();
-        if (manager == null)
-        {
-            manager = new RoiManager();
-        }
-        ResultsTable tempResults = new ResultsTable();
-        ParticleAnalyzer party1 = new ParticleAnalyzer( ParticleAnalyzer.ADD_TO_MANAGER + ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES + ParticleAnalyzer.INCLUDE_HOLES,Measurements.CENTER_OF_MASS,tempResults,((w*h/100)*newcover),((w-50)*(h-50)));
-        //---------------------------
-
-        //---------------------------
-        party1.analyze(imp2);
-
-        int howmany = manager.getCount();
-        //IJ.log("slice "+i+" step 1 "+ howmany);
-
-        //tempResults = manager.multiMeasure(imp2);
-        double covercorrect = newcover;
-
-        if (howmany < 1)
-        {
-            while (howmany<1 && covercorrect>0)
+            RoiManager manager = RoiManager.getInstance();
+            if (manager == null)
             {
-                ParticleAnalyzer party2 = new ParticleAnalyzer( ParticleAnalyzer.ADD_TO_MANAGER + ParticleAnalyzer.INCLUDE_HOLES,Measurements.CENTER_OF_MASS,tempResults,((w*h/100)*covercorrect),((w-50)*(h-50)));
-                party2.analyze(imp2);
-                howmany = manager.getCount();
-                covercorrect =  covercorrect-0.5;
+                manager = new RoiManager();
             }
-        }
-        party1.analyze(imp2);
-        if (howmany<1 && covercorrect<0.1){continue;}
-        Roi roix = manager.getRoi(0);
+            ResultsTable tempResults = new ResultsTable();
+            ParticleAnalyzer party1 = new ParticleAnalyzer( ParticleAnalyzer.ADD_TO_MANAGER + ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES + ParticleAnalyzer.INCLUDE_HOLES,Measurements.CENTER_OF_MASS,tempResults,((w*h/100)*newcover),((w-50)*(h-50)));
 
-        first.setSlice(i);
-        firstip.setColor(255);
-        //---------------------------
+//use particle analyser
 
-        roix.drawPixels(firstip);
-        //firstip.fill(roix);
-
-        double centerx = tempResults.getValue("XM",0);
-        double centery = tempResults.getValue("YM",0);
-        firstip.setColor(60);
-        firstip.drawOval((int) centerx, (int) centery,10,10);
-        centerx = centerx / pixres;
-        centery = centery / pixres;
-
-        //---------------------------
-        FloatPolygon dings = new FloatPolygon();
-        dings = roix.getFloatPolygon();
-        lang = dings.npoints;
-        extralang = 2*lang;
-        double large = (lang/100)*newdirect;
-        double small = (lang/100)*newfilos;
-        //IJ.log("All "+lang+" large "+large+" small "+small);
-
-
-        // get radius (distance to centre)
-        double radiusnew [] = new double[lang];
-        double radiusextra [] = new double[extralang];
-        double radtrans = 0;
-        int x1[] = new int[lang];
-        int y1[] = new int[lang];
-
-        //IJ.log(""+centerx+" "+centery);//Correct
-
-        tempResults.reset();
-        //IJ.log("slice "+i+" step2 ");
-
-        for (int test=0; test < lang; test++){
-            x1[test] = (int) Math.round(dings.xpoints[test]);
-            y1[test] = (int) Math.round(dings.ypoints[test]);
-            //IJ.log("slice "+i+" x "+x1[test]+ " y "+ y1[test]); Correct
-            radtrans = Math.pow(Math.abs(x1[test]-centerx),2)+Math.pow(Math.abs(y1[test]-centery),2);
-            radiusnew[test] = Math.sqrt(radtrans);
-            //IJ.log(""+radiusnew[test]);//Correct
-        }
-        int testzahl = 0;
-        for (int test=0; test < extralang; test++){
-                radiusextra[test] = radiusnew[testzahl];
-                testzahl++;
-                if (testzahl > lang-1){testzahl = testzahl - lang;}
-
-        }
-        //get rounded radius
-        double radiusround [] = new double[lang];
-        double sumdist = 0; //sumcount,
-        int correctpos = 0;
-        for (int test=0; test < lang; test++){
-                for (int i2=0;i2 < (lang/3);i2++){
-                    correctpos = test+i2;
-                    if (correctpos>= lang) {correctpos = correctpos-lang;}
-                    sumdist = sumdist + radiusnew[correctpos];
+            party1.analyze(imp2);
+            int howmany = manager.getCount();
+            double covercorrect = newcover;
+            if (howmany < 1)
+            {
+                while (howmany<1 && covercorrect>0)
+                {
+                    ParticleAnalyzer party2 = new ParticleAnalyzer( ParticleAnalyzer.ADD_TO_MANAGER + ParticleAnalyzer.INCLUDE_HOLES,Measurements.CENTER_OF_MASS,tempResults,((w*h/100)*covercorrect),((w-50)*(h-50)));
+                    party2.analyze(imp2);
+                    howmany = manager.getCount();
+                    covercorrect =  covercorrect-0.5;
                 }
-                radiusround[test] = sumdist/(lang/3);
-                //IJ.log("slice "+i+" radius "+radiusround[test]);correct
-                sumdist = 0;
-        }
-
-        //get rounded positions
-        double xround [] = new double[lang];
-        int xroundint [] = new int[lang];
-        double yround [] = new double[lang];
-        int yroundint [] = new int[lang];
-        double angle;
-        int roundsumx = 0; int roundsumy = 0;
-
-        //----------------------------------------------rundrund
-        int x1lang [] = new int[extralang];
-        int y1lang [] = new int[extralang];
-        int intcounter = 0;
-        for (int fill = 0; fill < extralang; fill++){
-            x1lang [fill] = x1[intcounter];
-            y1lang [fill] = y1[intcounter];
-            intcounter++;
-            if (intcounter > lang-1){intcounter = intcounter - lang;}
-        }
-
-        int Broundsumx = 0; int Broundsumy = 0;
-
-        firstip.setColor(180);
-        for (int rund = 0; rund < lang; rund++){
-            for (int limit = 0; limit < (lang/100*50); limit ++){
-                roundsumx = roundsumx+x1lang[limit+rund];
-                roundsumy = roundsumy+y1lang[limit+rund];
             }
-            xround[rund]=roundsumx/(lang/100*50);
-            yround[rund]=roundsumy/(lang/100*50);
-            firstip.drawPixel((int) xround[rund],(int) yround[rund]);
+            party1.analyze(imp2);
+            if (howmany<1 && covercorrect<0.1){continue;}
+
+//extract ROI
+
+            Roi roix = manager.getRoi(0);
+            first.setSlice(i);
+            firstip.setColor(255);
+            roix.drawPixels(firstip);
+
+//get centre of mass
+
+            double centerx = tempResults.getValue("XM",0);
+            double centery = tempResults.getValue("YM",0);
+            firstip.setColor(60);
+            firstip.drawOval((int) centerx, (int) centery,10,10);
+            centerx = centerx / pixres;
+            centery = centery / pixres;
+
+//transform ROI and calculate windows
+
+            FloatPolygon dings = new FloatPolygon();
+            dings = roix.getFloatPolygon();
+            lang = dings.npoints;
+            extralang = 2*lang;
+            double large = (lang/100)*newdirect;
+            double small = (lang/100)*newfilos;
+
+
+//get radius (distance to centre)
+
+            double radiusnew [] = new double[lang];
+            double radiusextra [] = new double[extralang];
+            double radtrans = 0;
+            int x1[] = new int[lang];
+            int y1[] = new int[lang];
+            tempResults.reset();
+
+            for (int test=0; test < lang; test++){
+                x1[test] = (int) Math.round(dings.xpoints[test]);
+                y1[test] = (int) Math.round(dings.ypoints[test]);
+                radtrans = Math.pow(Math.abs(x1[test]-centerx),2)+Math.pow(Math.abs(y1[test]-centery),2);
+                radiusnew[test] = Math.sqrt(radtrans);
+            }
+            int testzahl = 0;
+            for (int test=0; test < extralang; test++){
+                    radiusextra[test] = radiusnew[testzahl];
+                    testzahl++;
+                    if (testzahl > lang-1){testzahl = testzahl - lang;}
+            }
+
+//get rounded radius
+
+            double radiusround [] = new double[lang];
+            double sumdist = 0;
+            int correctpos = 0;
+            for (int test=0; test < lang; test++){
+                    for (int i2=0;i2 < (lang/3);i2++){
+                        correctpos = test+i2;
+                        if (correctpos>= lang) {correctpos = correctpos-lang;}
+                        sumdist = sumdist + radiusnew[correctpos];
+                    }
+                    radiusround[test] = sumdist/(lang/3);
+                    sumdist = 0;
+            }
+
+//get rounded positions
+
+            double xround [] = new double[lang];
+            int xroundint [] = new int[lang];
+            double yround [] = new double[lang];
+            int yroundint [] = new int[lang];
+            double angle;
+            int roundsumx = 0; int roundsumy = 0;
+            int x1lang [] = new int[extralang];
+            int y1lang [] = new int[extralang];
+            int intcounter = 0;
+            for (int fill = 0; fill < extralang; fill++){
+                x1lang [fill] = x1[intcounter];
+                y1lang [fill] = y1[intcounter];
+                intcounter++;
+                if (intcounter > lang-1){intcounter = intcounter - lang;}
+            }
+
+            int Broundsumx = 0; int Broundsumy = 0;
+            firstip.setColor(180);
+            for (int rund = 0; rund < lang; rund++){
+                for (int limit = 0; limit < (lang/100*50); limit ++){
+                    roundsumx = roundsumx+x1lang[limit+rund];
+                    roundsumy = roundsumy+y1lang[limit+rund];
+                }
+                xround[rund]=roundsumx/(lang/100*50);
+                yround[rund]=roundsumy/(lang/100*50);
+                firstip.drawPixel((int) xround[rund],(int) yround[rund]);
+                roundsumx=0;roundsumy=0;
+                Broundsumx = Broundsumx + (int) xround[rund];Broundsumy = Broundsumy + (int) yround[rund];
+            }
+
             roundsumx=0;roundsumy=0;
-            Broundsumx = Broundsumx + (int) xround[rund];Broundsumy = Broundsumy + (int) yround[rund];
-        }
 
-        roundsumx=0;roundsumy=0;
+            for (int test=0; test < lang; test++){
+                    angle = Math.acos((Math.abs(centery-dings.ypoints[test]))/radiusnew[test]);
+                    if ((centery-dings.ypoints[test])>0){
+                        yround[test]=centery+(radiusround[test]*Math.cos(Math.toRadians(angle)));
+                    }
+                    if ((centerx-dings.xpoints[test])>0){
+                        xround[test]=centerx+(radiusround[test]*Math.sin(Math.toRadians(angle)));
+                    }
+                    if ((centery-dings.ypoints[test])<0){
+                        yround[test]=centery-(radiusround[test]*Math.cos(Math.toRadians(angle)));
+                    }
+                    if ((centerx-dings.xpoints[test])<0){
+                        xround[test]=centerx+(radiusround[test]*Math.sin(Math.toRadians(angle)));
+                    }
+                    yroundint[test] = (int) Math.round(yround[test]);
+                    xroundint[test] = (int) Math.round(xround[test]);
+                    roundsumx = roundsumx + xroundint[test];
+                    roundsumy = roundsumy + yroundint[test];
+            }
+            manager.reset();
 
+            double roundcenterx = Broundsumx/lang;
+            double roundcentery = Broundsumy/lang;
 
+            IJ.log("Slice: "+i+" Horizontal distance of outer/inner center of mass: "+((centerx-roundcenterx)*pixres)+" Vertical distance of outer/inner center of mass: "+((centery-roundcentery)*pixres));
 
-        //-------------------------------------------rundrundende
+//calculate major number of protrusions
 
-        for (int test=0; test < lang; test++){
-                angle = Math.acos((Math.abs(centery-dings.ypoints[test]))/radiusnew[test]);
-                if ((centery-dings.ypoints[test])>0){
-                    yround[test]=centery+(radiusround[test]*Math.cos(Math.toRadians(angle)));
-                }
-                if ((centerx-dings.xpoints[test])>0){
-                    xround[test]=centerx+(radiusround[test]*Math.sin(Math.toRadians(angle)));
-                }
-                if ((centery-dings.ypoints[test])<0){
-                    yround[test]=centery-(radiusround[test]*Math.cos(Math.toRadians(angle)));
-                }
-                if ((centerx-dings.xpoints[test])<0){
-                    xround[test]=centerx+(radiusround[test]*Math.sin(Math.toRadians(angle)));
-                }
-                yroundint[test] = (int) Math.round(yround[test]);
-                xroundint[test] = (int) Math.round(xround[test]);
-                //firstip.setColor(180);
-                //firstip.drawPixel((int) xround[test],(int) yround[test]);
-                roundsumx = roundsumx + xroundint[test];
-                roundsumy = roundsumy + yroundint[test];
-        }
-        manager.reset();
+            int slopecount = 0;
+            int slopestart = 0;
+            int slopelength = 0;
+            double slope [] = new double[lang+1];
+            slope = slopecalculation(large,extralang,radiusextra);
+            double revradius [] = new double[lang+1];
+            revradius = reverser(extralang, radiusextra);
+            double revslopeA [] = new double[lang+1];
+            revslopeA = slopecalculation(large,extralang,revradius);
+            double revslope [] = new double[lang+1];
+            revslope =  reverser(extralang, revslopeA);
 
-        //double roundcenterx = roundsumx/lang;
-        double roundcenterx = Broundsumx/lang;
-        //double roundcentery = roundsumy/lang;
-        double roundcentery = Broundsumy/lang;
+            stackcount = 0;
+            stackcount = (i-1)*4;
+            int helper = 1;
+            int protcount = 0;
+            int schalter = 0;
 
-        //---------------------------- wieder aktivieren
-        IJ.log("Slice: "+i+" Horizontal distance of outer/inner center of mass: "+((centerx-roundcenterx)*pixres)+" Vertical distance of outer/inner center of mass: "+((centery-roundcentery)*pixres));
-        //---------------------------- wieder aktivieren
-        //calculate major protrusions
+            for (int major = 1; major < lang; major++){
+                    if (Math.abs(slope[helper]/revslope[helper])>sensitivity){
+                        if (slope[helper]<0){
+                            helper++;
+                            if (helper > lang){helper = helper - lang;}
+                            protcount++;
+                            while (slope[helper]<0){
+                                helper++;
+                            }
+                        }
+                        if (helper > lang){helper = helper - lang;}
+                        while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;if (helper > lang){helper = helper - lang;}}
+                        while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;}
+                    }
+                    helper++;
+            }
 
-        //------------------------------------------------------------------------------------------------------
+//generate major protrusion table
 
-    int slopecount = 0;
-    int slopestart = 0;
-    int slopelength = 0;
-    double slope [] = new double[lang+1];
-    slope = slopecalculation(large,extralang,radiusextra);
-    //IJ.log("slice "+i+" step4 ");
-    double revradius [] = new double[lang+1];
-    revradius = reverser(extralang, radiusextra);
-    //IJ.log("slice "+i+" step5 ");
-    double revslopeA [] = new double[lang+1];
-    revslopeA = slopecalculation(large,extralang,revradius);
-    //IJ.log("slice "+i+" step6 ");
-    double revslope [] = new double[lang+1];
-    revslope =  reverser(extralang, revslopeA);
-    //IJ.log("slope:"+slope[test]+" revslop:"+revslope[test]+" radius:"+radiusnew[test]);
-    //IJ.log(""+radiusnew[test])
-    //IJ.log("slice "+i+" step6 ");
-    //for (int clear = 0; clear < lang; clear++){IJ.log(""+clear+" "+radiusnew[clear]+" "+slope[clear]+" "+revslopeA[clear]);}
-    //for (int test=0; test < extralang; test++){IJ.log(""+radiusextra[test]+" "+slope[test]+" "+revslope[test]+" "+i);}
-
-//calculate major protrusions
-
-    stackcount = 0;
-    stackcount = (i-1)*4;
-    int helper = 1;
-//show major protrusions
-
-        for (int major = 1; major < lang; major++){
+            stackip.setColor(0);
+            firstip.setColor(130);
+            firstip.setLineWidth(2);
+            for (int major = 1; major < lang; major++){
                 if (Math.abs(slope[helper]/revslope[helper])>sensitivity){
                     slopecount++;
                     slopestart = helper;
-                    //while (slope[major]/revslope[major]>100) {major++;}
-                    //if (slope[major]<0){while (slope[major]<0){major++;}
                     if (slope[helper]<0){
-                            helper++;
-                            if (helper > lang){helper = helper - lang;}
-                        //IJ.log("major "+major+" "+i);
+                        helper++;
+                        if (helper > lang){helper = helper - lang;}
                         while (slope[helper]<0){
-
                             helper++;
                             }
                         }
                         if (helper > lang){helper = helper - lang;}
-                    while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;if (helper > lang){helper = helper - lang;}}//IJ.log("major "+helper+" "+i);
-                    rt1.incrementCounter();
-                    slopelength = helper - slopestart;
-                    rt1.addValue("X position slice "+i, x1[(int) Math.round(slopestart+(slopelength))]);//(int) Math.round(slopestart+(slopelength/2))
-                    rt1.addValue("Y position slice "+i, y1[(int) Math.round(slopestart+(slopelength))]);//(int) Math.round(slopestart+(slopelength/2))
-                    rt1.addValue("Broad "+i, slopelength*pixres);
-                    rt1.addValue("Length "+i, radiusnew[(int) Math.round(slopestart+(slopelength))]*pixres);//(int) Math.round(slopestart+(slopelength/2))
-                    stackip.setColor(0);
-                    firstip.setColor(130);
-                    firstip.setLineWidth(2);
-                    //firstip.drawLine(((int) Math.round(centerx)),((int) Math.round(centery)),x1[(int) Math.round(slopestart+(slopelength/2))],y1[(int) Math.round(slopestart+(slopelength/2))]);//(int) Math.round(slopestart+(slopelength/2))
-                    //firstip.drawLine(((int) Math.round(centerx)),((int) Math.round(centery)),x1[(int) Math.round(slopestart+(slopelength/2))],y1[(int) Math.round(slopestart+(slopelength/2))]);//(int) Math.round(slopestart+(slopelength/2))
-                    firstip.drawLine(((int) Math.round(roundcenterx)),((int) Math.round(roundcentery)),x1[(int) Math.round(slopestart+(slopelength))],y1[(int) Math.round(slopestart+(slopelength))]);//(int) Math.round(slopestart+(slopelength/2))
-                    //while (slope[major]/revslope[major]>1000) {major++;}
-                    while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;}
-
+                        while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;if (helper > lang){helper = helper - lang;}}
+                        slopelength = helper - slopestart;
+                        if (schalter < (protcount)){
+                            rt1.incrementCounter();
+                            rt1.addValue("X position slice "+i, x1[(int) Math.round(slopestart+(slopelength))]);
+                            rt1.addValue("Y position slice "+i, y1[(int) Math.round(slopestart+(slopelength))]);
+                            rt1.addValue("Broad "+i, slopelength*pixres);
+                            rt1.addValue("Length "+i, radiusnew[(int) Math.round(slopestart+(slopelength))]*pixres);
+                        }
+                        schalter++;
+                        firstip.drawLine(((int) Math.round(roundcenterx)),((int) Math.round(roundcentery)),x1[(int) Math.round(slopestart+(slopelength))],y1[(int) Math.round(slopestart+(slopelength))]);//(int) Math.round(slopestart+(slopelength/2))
+                        while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;}
                 }
                 helper++;
-        }
+            }
+            int slopecountlarge = slopecount;
+            slopecount = 0;
+            for (int clear = 0; clear < lang; clear++){slope[clear] = 0;revslopeA[clear] = 0;}
 
+//calculate minor protrusions and generate table
 
-        //---------------------------- wieder aktivieren
-        //IJ.log(" Major Protrusions: "+slopecount);
-        //---------------------------- wieder aktivieren
-        int slopecountlarge = slopecount;
-
-
-        slopecount = 0;
-        for (int clear = 0; clear < lang; clear++){slope[clear] = 0;revslopeA[clear] = 0;}
-        //calculate minor protrusions
-
-        slope = slopecalculation(small,lang,radiusnew);
-        revslopeA = slopecalculation(small,lang,revradius);
-        revslope =  reverser(lang, revslopeA);
+            slope = slopecalculation(small,lang,radiusnew);
+            revslopeA = slopecalculation(small,lang,revradius);
+            revslope =  reverser(lang, revslopeA);
 
             int minorcount = 0;
             for (int minor = 0; minor < lang; minor++){
@@ -354,68 +328,61 @@ for (int i=1;i<size+1;i++){
                     slopestart = minor;
                     while (slope[minor]+revslope[minor]<0 && minor<(lang-1)) {
                          minor++;
+                    }
+                    slopelength = minor - slopestart;
+                    rt2.incrementCounter();
+                    rt2.addValue("X position slice "+i, x1[(int) Math.round(slopestart+(slopelength/2))]);
+                    rt2.addValue("Y position slice "+i, y1[(int) Math.round(slopestart+(slopelength/2))]);
+                    rt2.addValue("Length "+i, slopelength*pixres);
+                    rt2.addValue("Broad "+i, radiusnew[(int) Math.round(slopestart+(slopelength/2))]*pixres);
                 }
-                slopelength = minor - slopestart;
-                rt2.incrementCounter();
-                rt2.addValue("X position slice "+i, x1[(int) Math.round(slopestart+(slopelength/2))]);
-                rt2.addValue("Y position slice "+i, y1[(int) Math.round(slopestart+(slopelength/2))]);
-                rt2.addValue("Length "+i, slopelength*pixres);
-                rt2.addValue("Broad "+i, radiusnew[(int) Math.round(slopestart+(slopelength/2))]*pixres);
-
             }
+
+//Output results
+
+            IJ.log("Slice: "+i+" Major Protrusions: "+protcount+" Filopodia: "+slopecount);
+            for (int clear = 0; clear < lang; clear++){slope[clear] = 0;revslopeA[clear] = 0;}
+            manager.close();
         }
-        //---------------------------- wieder aktivieren
-        IJ.log("Major Protrusions: "+slopecountlarge/2+" Filopodia: "+slopecount/2);
-        //---------------------------- wieder aktivieren
-        for (int clear = 0; clear < lang; clear++){slope[clear] = 0;revslopeA[clear] = 0;}
 
-    manager.close();
+//show results tables
 
-    }
-    //write results tables
-    rt1.show("Major protrusions");
-    rt2.show("Filopodia");
-    stackip.invert();
-    //ImagePlus outstackbild = new ImagePlus(title,stackip);
-    //outstackbild.setCalibration(imp1.getCalibration());
-    //outstackbild.show();
-    }
-
-
-public double [] reverser(int lang, double [] array) {
-    int negcorrect = lang;
-    double revarray [] = new double[lang];
-    for (int revers = 0; revers < lang; revers++){
-        negcorrect--;
-        revarray[revers] = array[negcorrect];
-    }
-    return revarray;
-}
-
-public double [] slopecalculation (double direct, int lang, double [] radius){
-    double slopeint [] = new double[lang+1];
-    double sumxy = 0;
-    double sumxsquare = 0;
-    double sumxint = 0;
-    double sumyint = 0;
-    int poscorrect = 0;
-    for (int major = 0; major < lang; major++){
-        //IJ.log("major "+major+" step3A ");
-        for (int direction = 0; direction < direct; direction ++){
-
-            poscorrect = major + direction;
-            if (poscorrect > lang-1) {poscorrect = poscorrect - lang;}
-            //IJ.log("poscorrect "+poscorrect);
-            sumxy = (direction*radius[poscorrect])+sumxy;
-            sumxint = direction + sumxint;
-            sumxsquare = direction * direction;
-            sumyint = radius[poscorrect]+sumyint;
+        rt1.show("Major protrusions");
+        rt2.show("Filopodia");
+        stackip.invert();
         }
-    slopeint[major] = (((direct)*sumxy)-(sumxint*sumyint))/(((direct)*sumxsquare)-(sumxint*sumxint));
-    sumxy = 0; sumxsquare = 0; sumxint = 0; sumyint = 0;
-    //IJ.log("slope "+slopeint[major]+" step3A ");
-    }
-    return slopeint;
-}
 
+//procedures for slope calculation
+
+    public double [] reverser(int lang, double [] array) {
+        int negcorrect = lang;
+        double revarray [] = new double[lang];
+        for (int revers = 0; revers < lang; revers++){
+            negcorrect--;
+            revarray[revers] = array[negcorrect];
+        }
+        return revarray;
+    }
+
+    public double [] slopecalculation (double direct, int lang, double [] radius){
+        double slopeint [] = new double[lang+1];
+        double sumxy = 0;
+        double sumxsquare = 0;
+        double sumxint = 0;
+        double sumyint = 0;
+        int poscorrect = 0;
+        for (int major = 0; major < lang; major++){
+            for (int direction = 0; direction < direct; direction ++){
+                poscorrect = major + direction;
+                if (poscorrect > lang-1) {poscorrect = poscorrect - lang;}
+                sumxy = (direction*radius[poscorrect])+sumxy;
+                sumxint = direction + sumxint;
+                sumxsquare = direction * direction;
+                sumyint = radius[poscorrect]+sumyint;
+            }
+            slopeint[major] = (((direct)*sumxy)-(sumxint*sumyint))/(((direct)*sumxsquare)-(sumxint*sumxint));
+            sumxy = 0; sumxsquare = 0; sumxint = 0; sumyint = 0;
+        }
+        return slopeint;
+    }
 }
