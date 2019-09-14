@@ -131,7 +131,7 @@ public class Surface_and_Direction_Detector_B implements PlugIn {
             double centerx = tempResults.getValue("XM",0);
             double centery = tempResults.getValue("YM",0);
             firstip.setColor(60);
-            firstip.drawOval((int) centerx, (int) centery,10,10);
+            firstip.drawOval((int) ((centerx/pixres)-5), (int) ((centery/pixres)-5),10,10);
             centerx = centerx / pixres;
             centery = centery / pixres;
 
@@ -243,18 +243,32 @@ public class Surface_and_Direction_Detector_B implements PlugIn {
             IJ.log("Slice: "+i+" Horizontal distance of outer/inner center of mass: "+((centerx-roundcenterx)*pixres)+" Vertical distance of outer/inner center of mass: "+((centery-roundcentery)*pixres));
 
 //calculate major number of protrusions
-
+            int kurzlang = (int)(((newcover/lang))*100);
             int slopecount = 0;
             int slopestart = 0;
             int slopelength = 0;
+
             double slope [] = new double[lang+1];
-            slope = slopecalculation(large,extralang,radiusextra);
+            int peakmarker [] = new int[extralang];
+            slope = slopecalculation(large,extralang,radiusextra);//extralang (lang+kurzlang) radiusextra
+            for (int x = 0; x < extralang;x++){peakmarker[x]=0;}
+            //slope1 = null;
+
             double revradius [] = new double[lang+1];
-            revradius = reverser(extralang, radiusextra);
+            revradius = reverser(extralang, radiusextra);//extralang (lang+kurzlang) radiusextra
+
             double revslopeA [] = new double[lang+1];
-            revslopeA = slopecalculation(large,extralang,revradius);
+            //double revslopeA1 [] = new double[lang+1];
+            revslopeA = slopecalculation(large,extralang,revradius);//extralang (lang+kurzlang)
+            //for (int x = 1; x < lang;x++){revslopeA[x]=revslopeA1[x];}
+            //revslopeA1 = null;
+
             double revslope [] = new double[lang+1];
-            revslope =  reverser(extralang, revslopeA);
+            revslope =  reverser(extralang, revslopeA);//extralang (lang+kurzlang)
+            int length =slope.length;
+            //int length2 =slope1.length;
+            //IJ.log(" arraylength: "+length+" wie lang? "+lang+" sollte sein: "+length2);
+            //IJ.log(" arraylength: "+length+" wie lang? "+lang);
 
             stackcount = 0;
             stackcount = (i-1)*4;
@@ -262,31 +276,37 @@ public class Surface_and_Direction_Detector_B implements PlugIn {
             int protcount = 0;
             int schalter = 0;
 
-            for (int major = 1; major < lang; major++){
+
+            for (int major = 1; major < (lang-kurzlang); major++){
                     if (Math.abs(slope[helper]/revslope[helper])>sensitivity){
                         if (slope[helper]<0){
                             helper++;
-                            if (helper > lang){helper = helper - lang;}
+                            if (helper > (lang-kurzlang)){helper = helper - (lang-kurzlang);}
                             protcount++;
+
+                            //IJ.log(" protcount: "+protcount+ " major "+major);
                             while (slope[helper]<0){
                                 helper++;
                             }
                         }
-                        if (helper > lang){helper = helper - lang;}
-                        while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;if (helper > lang){helper = helper - lang;}}
+                        if (helper > (lang-kurzlang)){helper = helper - (lang-kurzlang);}
+                        while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;if (helper > (lang-kurzlang)){helper = helper - (lang-kurzlang);}}
                         while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;}
                     }
                     helper++;
             }
 
-//generate major protrusion table
 
+
+//generate major protrusion table
+            int testcount = 0;
             stackip.setColor(0);
             firstip.setColor(130);
             firstip.setLineWidth(2);
             for (int major = 1; major < lang; major++){
                 if (Math.abs(slope[helper]/revslope[helper])>sensitivity){
                     slopecount++;
+                    //IJ.log(" slopecount: "+slopecount);
                     slopestart = helper;
                     if (slope[helper]<0){
                         helper++;
@@ -297,6 +317,7 @@ public class Surface_and_Direction_Detector_B implements PlugIn {
                         }
                         if (helper > lang){helper = helper - lang;}
                         while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;if (helper > lang){helper = helper - lang;}}
+                        //IJ.log(" helper: "+helper);
                         slopelength = helper - slopestart;
                         if (schalter < (protcount)){
                             rt1.incrementCounter();
@@ -307,10 +328,23 @@ public class Surface_and_Direction_Detector_B implements PlugIn {
                         }
                         schalter++;
                         firstip.drawLine(((int) Math.round(roundcenterx)),((int) Math.round(roundcentery)),x1[(int) Math.round(slopestart+(slopelength))],y1[(int) Math.round(slopestart+(slopelength))]);//(int) Math.round(slopestart+(slopelength/2))
+                        testcount ++;
+
+
+                        peakmarker[helper] = 1;
+
+
+                        //IJ.log("helper "+helper+" testcount: "+testcount+" schalter "+schalter);
                         while (slope[helper+1]*revslope[helper+1]>slope[helper]*revslope[helper]) {helper++;}
                 }
                 helper++;
             }
+            //----------------------------------------------------------
+            int peakcount = 0;
+            for (int x = 0; x < lang;x++){if (peakmarker[x]>0){peakcount++;}}
+
+            //IJ.log(" peakcount: "+peakcount);
+            //----------------------------------------------------
             int slopecountlarge = slopecount;
             slopecount = 0;
             for (int clear = 0; clear < lang; clear++){slope[clear] = 0;revslopeA[clear] = 0;}
@@ -340,7 +374,7 @@ public class Surface_and_Direction_Detector_B implements PlugIn {
 
 //Output results
 
-            IJ.log("Slice: "+i+" Major Protrusions: "+protcount+" Filopodia: "+slopecount);
+            IJ.log("Slice: "+i+" Major Protrusions: "+peakcount+" Filopodia: "+slopecount);
             for (int clear = 0; clear < lang; clear++){slope[clear] = 0;revslopeA[clear] = 0;}
             manager.close();
         }
