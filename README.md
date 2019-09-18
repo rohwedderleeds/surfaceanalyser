@@ -1,4 +1,4 @@
-# surfaceanalyser Version 1.0
+# surfaceanalyser
 
 John E. Ladbury Group, FBS Leeds
 
